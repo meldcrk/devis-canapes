@@ -5,10 +5,10 @@ Adaptez les prix selon vos tarifs réels !
 
 # TARIFS DE BASE (à personnaliser selon vos prix)
 PRIX_MOUSSE = {
-    'D25': 15,  # €/m²
-    'D30': 20,
-    'HR35': 25,
-    'HR45': 35
+    'D25': 1.5,  # €/m²
+    'D30': 1.8,
+    'HR35': 2.1,
+    'HR45': 2.5
 }
 
 PRIX_TISSU_M2 = 30  # Prix moyen du tissu par m²
