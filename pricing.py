@@ -1,217 +1,133 @@
 """
 Module de calcul des prix pour les canapés sur mesure
-Simple et facile à modifier !
+Adaptez les prix selon vos tarifs réels !
 """
 
-# ==================
-# TARIFS DE BASE
-# ==================
-
-PRIX_COUSSINS = {
-    '65': 35,
-    '80': 44,
-    '90': 48,
-    'valise': 70  # Prix pour tous les types de valise
+# TARIFS DE BASE (à personnaliser selon vos prix)
+PRIX_MOUSSE = {
+    'D25': 15,  # €/m²
+    'D30': 20,
+    'HR35': 25,
+    'HR45': 35
 }
 
-PRIX_SUPPORTS = {
-    'assise': 250,
-    'angle': 250
-}
+PRIX_TISSU_M2 = 30  # Prix moyen du tissu par m²
+PRIX_MAIN_OEUVRE_BASE = 200  # Prix de base de la main d'œuvre
 
-PRIX_COMPOSANTS = {
-    'accoudoir': 225,
-    'dossier': 250,
-    'coussin_deco': 15,
-    'traversin': 30,
-    'surmatelas': 80
-}
+# Options
+PRIX_ACCOUDOIR = 80
+PRIX_DOSSIER = 120
+PRIX_COUSSIN_DECO = 25
+PRIX_TRAVERSIN = 35
+PRIX_SURMATELAS = 150
+PRIX_MERIDIENNE = 200
 
-# Prix de la mousse au m³
-PRIX_MOUSSE_M3 = {
-    'D25': 162.5,
-    'D30': 163.0,
-    'HR35': 163.7,
-    'HR45': 164.7
-}
 
-# Prix du tissu au mètre linéaire
-PRIX_TISSU_ML = {
-    'standard': 74,  # Pour largeur ≤ 140 cm
-    'large': 105     # Pour largeur > 140 cm
-}
-
-def calculer_prix_mousse_tissu(longueur_cm, largeur_cm, hauteur_cm, type_mousse):
+def calculer_surface_tissu(type_canape, tx, ty, tz, profondeur):
     """
-    Calcule le prix de la mousse + tissu pour une banquette
+    Calcule la surface de tissu nécessaire
+    """
+    if "Simple" in type_canape:
+        # Surface approximative : assise + dossier + côtés
+        surface = (tx * profondeur / 10000)  # Convertir cm² en m²
+        surface += (tx * 60 / 10000)  # Dossier
+        surface *= 1.3  # Marge pour couture et chutes
+        
+    elif "L" in type_canape:
+        # Deux parties
+        surface = (tx * profondeur / 10000) + (ty * profondeur / 10000)
+        surface += ((tx + ty) * 60 / 10000)  # Dossiers
+        surface *= 1.4
+        
+    else:  # U
+        # Trois parties
+        surface = (tx * profondeur / 10000) + (ty * profondeur / 10000) + (tz * profondeur / 10000)
+        surface += ((tx + ty + tz) * 60 / 10000)
+        surface *= 1.5
     
-    Paramètres:
-        longueur_cm: longueur en cm
-        largeur_cm: largeur en cm
-        hauteur_cm: hauteur (épaisseur) en cm
-        type_mousse: 'D25', 'D30', 'HR35', ou 'HR45'
-    
-    Retourne:
-        dict avec prix_mousse, prix_tissu, total
-    """
-    # Conversion en mètres pour le calcul
-    longueur_m = longueur_cm / 100
-    largeur_m = largeur_cm / 100
-    hauteur_m = hauteur_cm / 100
-    
-    # Prix de la mousse (volume en m³ × prix au m³)
-    volume_m3 = longueur_m * largeur_m * hauteur_m
-    prix_mousse = volume_m3 * PRIX_MOUSSE_M3[type_mousse]
-    
-    # Prix du tissu (selon la largeur de la housse)
-    # Largeur de la housse = largeur + 2 × épaisseur
-    largeur_housse_cm = largeur_cm + (2 * hauteur_cm)
-    
-    if largeur_housse_cm > 140:
-        prix_tissu = longueur_m * PRIX_TISSU_ML['large']
-    else:
-        prix_tissu = longueur_m * PRIX_TISSU_ML['standard']
-    
-    return {
-        'prix_mousse': round(prix_mousse, 2),
-        'prix_tissu': round(prix_tissu, 2),
-        'total': round(prix_mousse + prix_tissu, 2)
-    }
+    return round(surface, 2)
 
-def estimer_nb_banquettes(type_canape):
-    """
-    Estime le nombre de banquettes selon le type de canapé
-    """
-    if 'Simple' in type_canape:
-        return 1
-    elif 'L' in type_canape:
-        return 2  # Gauche + Bas
-    elif 'U' in type_canape:
-        return 3  # Gauche + Bas + Droite
-    return 1
 
-def estimer_nb_angles(type_canape):
+def calculer_surface_mousse(type_canape, tx, ty, tz, profondeur, epaisseur):
     """
-    Estime le nombre d'angles selon le type de canapé
+    Calcule le volume de mousse nécessaire
     """
-    if 'U2F' in type_canape:
-        return 2
-    elif 'U1F' in type_canape or 'LF' in type_canape:
-        return 1
-    return 0
-
-def estimer_nb_coussins(type_coussins, longueur_totale):
-    """
-    Estime le nombre de coussins approximatif
-    (sera ajusté avec le schéma réel)
-    """
-    if type_coussins == 'auto':
-        taille_moyenne = 75
-    elif type_coussins in ['65', '80', '90']:
-        taille_moyenne = int(type_coussins)
-    else:  # valise
-        taille_moyenne = 75
+    if "Simple" in type_canape:
+        volume = tx * profondeur * epaisseur / 1000000  # cm³ vers m³
+    elif "L" in type_canape:
+        volume = (tx * profondeur + ty * profondeur) * epaisseur / 1000000
+    else:  # U
+        volume = (tx * profondeur + ty * profondeur + tz * profondeur) * epaisseur / 1000000
     
-    return max(1, int(longueur_totale / taille_moyenne))
+    return round(volume, 3)
 
-def calculer_prix_total(type_canape, tx, ty, tz, profondeur,
-                       type_coussins, type_mousse, epaisseur,
-                       acc_left, acc_right, acc_bas,
+
+def calculer_prix_total(type_canape, tx, ty, tz, profondeur, type_coussins, 
+                       type_mousse, epaisseur, acc_left, acc_right, acc_bas,
                        dossier_left, dossier_bas, dossier_right,
-                       nb_coussins_deco, nb_traversins_supp,
+                       nb_coussins_deco, nb_traversins_supp, 
                        has_surmatelas, has_meridienne):
     """
-    Calcule le prix total du canapé avec tous les détails
-    
-    Retourne:
-        dict avec 'details', 'sous_total', 'tva', 'total_ttc'
+    Calcule le prix total du canapé avec détails
     """
-    
     details = {}
     
-    # 1. SUPPORTS D'ASSISE
-    nb_banquettes = estimer_nb_banquettes(type_canape)
-    prix_supports_assise = nb_banquettes * PRIX_SUPPORTS['assise']
-    details[f"Supports d'assise ({nb_banquettes} × {PRIX_SUPPORTS['assise']}€)"] = prix_supports_assise
+    # 1. Tissu
+    surface_tissu = calculer_surface_tissu(type_canape, tx, ty, tz, profondeur)
+    prix_tissu = surface_tissu * PRIX_TISSU_M2
+    details['Tissu'] = round(prix_tissu, 2)
     
-    # 2. SUPPORTS D'ANGLE
-    nb_angles = estimer_nb_angles(type_canape)
-    if nb_angles > 0:
-        prix_angles = nb_angles * PRIX_SUPPORTS['angle']
-        details[f"Supports d'angle ({nb_angles} × {PRIX_SUPPORTS['angle']}€)"] = prix_angles
+    # 2. Mousse
+    volume_mousse = calculer_surface_mousse(type_canape, tx, ty, tz, profondeur, epaisseur)
+    prix_mousse = volume_mousse * PRIX_MOUSSE[type_mousse] * 1000  # Convertir en prix/m³
+    details['Mousse'] = round(prix_mousse, 2)
     
-    # 3. ACCOUDOIRS
+    # 3. Structure et main d'œuvre
+    complexite = 1.0
+    if "L" in type_canape:
+        complexite = 1.3
+    elif "U" in type_canape:
+        complexite = 1.6
+    
+    prix_structure = PRIX_MAIN_OEUVRE_BASE * complexite
+    details['Structure et Fabrication'] = round(prix_structure, 2)
+    
+    # 4. Accoudoirs
     nb_accoudoirs = sum([acc_left, acc_right, acc_bas])
     if nb_accoudoirs > 0:
-        prix_accoudoirs = nb_accoudoirs * PRIX_COMPOSANTS['accoudoir']
-        details[f"Accoudoirs ({nb_accoudoirs} × {PRIX_COMPOSANTS['accoudoir']}€)"] = prix_accoudoirs
+        details['Accoudoirs'] = nb_accoudoirs * PRIX_ACCOUDOIR
     
-    # 4. DOSSIERS
+    # 5. Dossiers
     nb_dossiers = sum([dossier_left, dossier_bas, dossier_right])
     if nb_dossiers > 0:
-        prix_dossiers = nb_dossiers * PRIX_COMPOSANTS['dossier']
-        details[f"Dossiers ({nb_dossiers} × {PRIX_COMPOSANTS['dossier']}€)"] = prix_dossiers
+        details['Dossiers'] = nb_dossiers * PRIX_DOSSIER
     
-    # 5. COUSSINS
-    # Estimation de la longueur totale pour les coussins
-    longueur_totale = tx
-    if ty:
-        longueur_totale += ty
-    if tz:
-        longueur_totale += tz
-    
-    nb_coussins = estimer_nb_coussins(type_coussins, longueur_totale)
-    
-    if type_coussins in PRIX_COUSSINS:
-        prix_unitaire = PRIX_COUSSINS[type_coussins]
-    elif 'valise' in type_coussins.lower():
-        prix_unitaire = PRIX_COUSSINS['valise']
-    else:
-        prix_unitaire = PRIX_COUSSINS['valise']
-    
-    prix_coussins = nb_coussins * prix_unitaire
-    details[f"Coussins ({nb_coussins} × {prix_unitaire}€)"] = prix_coussins
-    
-    # 6. MOUSSE ET TISSU PAR BANQUETTE
-    prix_mousse_tissu_total = 0
-    
-    # Banquette gauche (si existe)
-    if ty:
-        mt = calculer_prix_mousse_tissu(ty, profondeur, epaisseur, type_mousse)
-        prix_mousse_tissu_total += mt['total']
-        details[f"Mousse+Tissu Gauche ({ty}×{profondeur}×{epaisseur})"] = mt['total']
-    
-    # Banquette bas
-    mt = calculer_prix_mousse_tissu(tx, profondeur, epaisseur, type_mousse)
-    prix_mousse_tissu_total += mt['total']
-    details[f"Mousse+Tissu Bas ({tx}×{profondeur}×{epaisseur})"] = mt['total']
-    
-    # Banquette droite (si existe)
-    if tz:
-        mt = calculer_prix_mousse_tissu(tz, profondeur, epaisseur, type_mousse)
-        prix_mousse_tissu_total += mt['total']
-        details[f"Mousse+Tissu Droite ({tz}×{profondeur}×{epaisseur})"] = mt['total']
-    
-    # 7. OPTIONS
+    # 6. Coussins déco
     if nb_coussins_deco > 0:
-        prix_deco = nb_coussins_deco * PRIX_COMPOSANTS['coussin_deco']
-        details[f"Coussins déco ({nb_coussins_deco} × {PRIX_COMPOSANTS['coussin_deco']}€)"] = prix_deco
+        details['Coussins décoratifs'] = nb_coussins_deco * PRIX_COUSSIN_DECO
     
+    # 7. Traversins
     if nb_traversins_supp > 0:
-        prix_trav = nb_traversins_supp * PRIX_COMPOSANTS['traversin']
-        details[f"Traversins ({nb_traversins_supp} × {PRIX_COMPOSANTS['traversin']}€)"] = prix_trav
+        details['Traversins'] = nb_traversins_supp * PRIX_TRAVERSIN
     
+    # 8. Surmatelas
     if has_surmatelas:
-        details["Surmatelas"] = PRIX_COMPOSANTS['surmatelas']
+        details['Surmatelas'] = PRIX_SURMATELAS
     
-    # CALCUL TOTAL
+    # 9. Méridienne
+    if has_meridienne:
+        details['Méridienne'] = PRIX_MERIDIENNE
+    
+    # Calculs finaux
     sous_total = sum(details.values())
     tva = round(sous_total * 0.20, 2)
     total_ttc = round(sous_total + tva, 2)
     
     return {
         'details': details,
-        'sous_total': sous_total,
+        'sous_total': round(sous_total, 2),
         'tva': tva,
-        'total_ttc': total_ttc
+        'total_ttc': total_ttc,
+        'surface_tissu_m2': surface_tissu,
+        'volume_mousse_m3': volume_mousse
     }
