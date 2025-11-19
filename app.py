@@ -1,17 +1,23 @@
 """
 Application Streamlit pour générer des devis de canapés sur mesure
-Compatible Streamlit Cloud - Sans turtle !
+Compatible Streamlit Cloud - Utilise canapematplot.py
 """
 
 import streamlit as st
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from io import BytesIO
 from PIL import Image
 
-# Import de vos modules
+# Import des modules personnalisés
 from pricing import calculer_prix_total
 from pdf_generator import generer_pdf_devis
+
+# Import des fonctions de génération de schémas depuis canapematplot
+from canapematplot import (
+    render_LNF, render_LF_variant, render_U2f_variant,
+    render_U, render_U1F_v1, render_U1F_v2, render_U1F_v3, render_U1F_v4,
+    render_Simple1
+)
 
 # Configuration de la page
 st.set_page_config(
@@ -20,112 +26,121 @@ st.set_page_config(
     layout="wide"
 )
 
-# Fonction pour dessiner le canapé avec matplotlib
-def dessiner_canape(type_canape, tx, ty, tz, profondeur, acc_left, acc_right, acc_bas, 
-                    dossier_left, dossier_bas, dossier_right, meridienne_side, meridienne_len):
+def generer_schema_canape(type_canape, tx, ty, tz, profondeur, 
+                          acc_left, acc_right, acc_bas,
+                          dossier_left, dossier_bas, dossier_right,
+                          meridienne_side, meridienne_len, coussins="auto"):
     """
-    Dessine un schéma simple du canapé avec matplotlib
+    Génère le schéma du canapé en utilisant les fonctions de canapematplot.py
+    et retourne une figure matplotlib
     """
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig = plt.figure(figsize=(12, 8))
     
-    # Couleurs
-    color_assise = '#E8E8E8'
-    color_acc = '#A0A0A0'
-    color_dossier = '#C0C0C0'
-    
-    # Échelle
-    scale = 0.01  # 1cm = 0.01 unité
-    
-    if "Simple" in type_canape:
-        # Canapé simple
-        # Assise
-        rect_assise = patches.Rectangle((0, 0), tx*scale, profondeur*scale, 
-                                        linewidth=2, edgecolor='black', facecolor=color_assise)
-        ax.add_patch(rect_assise)
+    try:
+        if "Simple" in type_canape:
+            render_Simple1(
+                tx=tx,
+                profondeur=profondeur,
+                dossier=dossier_bas,
+                acc_left=acc_left,
+                acc_right=acc_right,
+                meridienne_side=meridienne_side,
+                meridienne_len=meridienne_len,
+                coussins=coussins,
+                window_title="Canapé Simple"
+            )
+            
+        elif "L - Sans Angle" in type_canape:
+            render_LNF(
+                tx=tx,
+                ty=ty,
+                profondeur=profondeur,
+                dossier_left=dossier_left,
+                dossier_bas=dossier_bas,
+                acc_left=acc_left,
+                acc_bas=acc_bas,
+                meridienne_side=meridienne_side,
+                meridienne_len=meridienne_len,
+                coussins=coussins,
+                variant="auto",
+                window_title="Canapé L - Sans Angle"
+            )
+            
+        elif "L - Avec Angle" in type_canape:
+            render_LF_variant(
+                tx=tx,
+                ty=ty,
+                profondeur=profondeur,
+                dossier_left=dossier_left,
+                dossier_bas=dossier_bas,
+                acc_left=acc_left,
+                acc_bas=acc_bas,
+                meridienne_side=meridienne_side,
+                meridienne_len=meridienne_len,
+                coussins=coussins,
+                window_title="Canapé L - Avec Angle"
+            )
+            
+        elif "U - Sans Angle" in type_canape:
+            render_U(
+                tx=tx,
+                ty_left=ty,
+                tz_right=tz,
+                profondeur=profondeur,
+                dossier_left=dossier_left,
+                dossier_bas=dossier_bas,
+                dossier_right=dossier_right,
+                acc_left=acc_left,
+                acc_bas=acc_bas,
+                acc_right=acc_right,
+                coussins=coussins,
+                variant="auto",
+                window_title="Canapé U - Sans Angle"
+            )
+            
+        elif "U - 1 Angle" in type_canape:
+            # Par défaut utiliser v1, mais vous pouvez ajouter un sélecteur
+            render_U1F_v1(
+                tx=tx,
+                ty=ty,
+                tz=tz,
+                profondeur=profondeur,
+                dossier_left=dossier_left,
+                dossier_bas=dossier_bas,
+                dossier_right=dossier_right,
+                acc_left=acc_left,
+                acc_right=acc_right,
+                meridienne_side=meridienne_side,
+                meridienne_len=meridienne_len,
+                coussins=coussins,
+                window_title="Canapé U - 1 Angle"
+            )
+            
+        elif "U - 2 Angles" in type_canape:
+            render_U2f_variant(
+                tx=tx,
+                ty_left=ty,
+                tz_right=tz,
+                profondeur=profondeur,
+                dossier_left=dossier_left,
+                dossier_bas=dossier_bas,
+                dossier_right=dossier_right,
+                acc_left=acc_left,
+                acc_bas=acc_bas,
+                acc_right=acc_right,
+                meridienne_side=meridienne_side,
+                meridienne_len=meridienne_len,
+                coussins=coussins,
+                window_title="Canapé U - 2 Angles"
+            )
         
-        # Dossier
-        if dossier_bas:
-            rect_dossier = patches.Rectangle((0, profondeur*scale), tx*scale, 10*scale,
-                                            linewidth=2, edgecolor='black', facecolor=color_dossier)
-            ax.add_patch(rect_dossier)
+        # Récupérer la figure actuelle créée par matplotlib
+        fig = plt.gcf()
+        return fig
         
-        # Accoudoirs
-        if acc_left:
-            rect_acc_l = patches.Rectangle((-10*scale, 0), 10*scale, profondeur*scale,
-                                          linewidth=2, edgecolor='black', facecolor=color_acc)
-            ax.add_patch(rect_acc_l)
-        if acc_right:
-            rect_acc_r = patches.Rectangle((tx*scale, 0), 10*scale, profondeur*scale,
-                                          linewidth=2, edgecolor='black', facecolor=color_acc)
-            ax.add_patch(rect_acc_r)
-    
-    elif "L" in type_canape:
-        # Canapé en L
-        # Partie horizontale (bas)
-        rect_h = patches.Rectangle((0, 0), tx*scale, profondeur*scale,
-                                   linewidth=2, edgecolor='black', facecolor=color_assise)
-        ax.add_patch(rect_h)
-        
-        # Partie verticale (gauche)
-        rect_v = patches.Rectangle((0, profondeur*scale), profondeur*scale, ty*scale,
-                                   linewidth=2, edgecolor='black', facecolor=color_assise)
-        ax.add_patch(rect_v)
-        
-        # Dossiers
-        if dossier_bas:
-            rect_d_b = patches.Rectangle((0, profondeur*scale), tx*scale, 10*scale,
-                                        linewidth=2, edgecolor='black', facecolor=color_dossier)
-            ax.add_patch(rect_d_b)
-        if dossier_left:
-            rect_d_l = patches.Rectangle((-10*scale, profondeur*scale), 10*scale, ty*scale,
-                                        linewidth=2, edgecolor='black', facecolor=color_dossier)
-            ax.add_patch(rect_d_l)
-    
-    else:  # U
-        # Canapé en U
-        # Partie bas
-        rect_b = patches.Rectangle((0, 0), tx*scale, profondeur*scale,
-                                   linewidth=2, edgecolor='black', facecolor=color_assise)
-        ax.add_patch(rect_b)
-        
-        # Partie gauche
-        rect_l = patches.Rectangle((0, profondeur*scale), profondeur*scale, ty*scale,
-                                   linewidth=2, edgecolor='black', facecolor=color_assise)
-        ax.add_patch(rect_l)
-        
-        # Partie droite
-        rect_r = patches.Rectangle((tx*scale - profondeur*scale, profondeur*scale), 
-                                   profondeur*scale, tz*scale,
-                                   linewidth=2, edgecolor='black', facecolor=color_assise)
-        ax.add_patch(rect_r)
-        
-        # Dossiers
-        if dossier_bas:
-            rect_d_b = patches.Rectangle((profondeur*scale, profondeur*scale), 
-                                        (tx-2*profondeur)*scale, 10*scale,
-                                        linewidth=2, edgecolor='black', facecolor=color_dossier)
-            ax.add_patch(rect_d_b)
-    
-    # Méridienne (cercle pour indiquer)
-    if meridienne_side:
-        if meridienne_side == 'g':
-            circle = plt.Circle((-5*scale, profondeur*scale/2), 3*scale, color='red', alpha=0.5)
-            ax.add_patch(circle)
-            ax.text(-5*scale, profondeur*scale/2 + 5*scale, 'Méridienne', ha='center')
-        elif meridienne_side == 'd':
-            circle = plt.Circle(((tx+5)*scale, profondeur*scale/2), 3*scale, color='red', alpha=0.5)
-            ax.add_patch(circle)
-            ax.text((tx+5)*scale, profondeur*scale/2 + 5*scale, 'Méridienne', ha='center')
-    
-    # Configuration des axes
-    ax.set_aspect('equal')
-    ax.set_xlim(-20*scale, (tx+20)*scale)
-    ax.set_ylim(-20*scale, max(profondeur, ty if ty else 0, tz if tz else 0)*scale + 30*scale)
-    ax.grid(True, alpha=0.3)
-    ax.set_xlabel('Dimensions en cm (échelle)')
-    ax.set_title(f'Schéma du Canapé - {type_canape}', fontsize=14, fontweight='bold')
-    
-    return fig
+    except Exception as e:
+        plt.close()
+        raise Exception(f"Erreur lors de la génération du schéma : {str(e)}")
 
 # Titre principal
 st.title("🛋️ Générateur de Devis Canapés Sur Mesure")
@@ -176,13 +191,17 @@ with col1:
     st.subheader("4. Dossiers")
     dossier_left = st.checkbox("Dossier Gauche", value=True) if "Simple" not in type_canape else False
     dossier_bas = st.checkbox("Dossier Bas", value=True)
-    dossier_right = st.checkbox("Dossier Droit", value=True) if ("U" in type_canape or "L" not in type_canape) else False
+    dossier_right = st.checkbox("Dossier Droit", value=True) if ("U" in type_canape) else False
     
     # MÉRIDIENNE
     st.subheader("5. Méridienne (optionnel)")
     has_meridienne = st.checkbox("Ajouter une méridienne")
     if has_meridienne:
-        meridienne_side = st.selectbox("Côté", ["Gauche (g)", "Droite (d)", "Bas (b)"])
+        meridienne_options = ["Gauche (g)", "Droite (d)"]
+        if "L" in type_canape or "U" in type_canape:
+            meridienne_options.append("Bas (b)")
+        
+        meridienne_side = st.selectbox("Côté", meridienne_options)
         meridienne_len = st.number_input("Longueur (cm)", min_value=30, max_value=200, value=100, step=10)
         meridienne_side = meridienne_side[0].lower()
     else:
@@ -193,35 +212,23 @@ with col1:
     st.subheader("6. Coussins")
     type_coussins = st.selectbox(
         "Type de coussins",
-        ["auto", "65", "80", "90", "valise"],
-        help="Auto = optimisation automatique"
+        ["auto", "65", "80", "90", "valise", "p", "g"],
+        help="Auto = optimisation automatique, valise = tailles variables optimisées"
     )
     
-    # TRAVERSINS
-    st.subheader("7. Traversins (optionnel)")
-    has_traversins = st.checkbox("Ajouter des traversins")
-    if has_traversins:
-        traversins_list = st.multiselect(
-            "Position",
-            ["Gauche (g)", "Droite (d)", "Bas (b)"]
-        )
-        traversins = ",".join([t[0].lower() for t in traversins_list]) if traversins_list else None
-    else:
-        traversins = None
-    
     # MOUSSE ET TISSU
-    st.subheader("8. Mousse & Tissu")
+    st.subheader("7. Mousse & Tissu")
     type_mousse = st.selectbox("Type de mousse", ["D25", "D30", "HR35", "HR45"])
     epaisseur = st.number_input("Épaisseur (cm)", min_value=15, max_value=35, value=25, step=5)
     
     # OPTIONS SUPPLÉMENTAIRES
-    st.subheader("9. Options")
+    st.subheader("8. Options")
     nb_coussins_deco = st.number_input("Coussins déco", min_value=0, max_value=10, value=0)
     nb_traversins_supp = st.number_input("Traversins supplémentaires", min_value=0, max_value=5, value=0)
     has_surmatelas = st.checkbox("Surmatelas")
     
     # INFORMATIONS CLIENT
-    st.subheader("10. Informations Client")
+    st.subheader("9. Informations Client")
     nom_client = st.text_input("Nom du client")
     email_client = st.text_input("Email (optionnel)")
 
@@ -233,12 +240,20 @@ with col2:
     if st.button("🎨 Générer l'Aperçu", type="primary", use_container_width=True):
         with st.spinner("Génération du schéma en cours..."):
             try:
-                # Dessiner le canapé
-                fig = dessiner_canape(
-                    type_canape, tx, ty, tz, profondeur,
-                    acc_left, acc_right, acc_bas,
-                    dossier_left, dossier_bas, dossier_right,
-                    meridienne_side, meridienne_len
+                # Générer le schéma
+                fig = generer_schema_canape(
+                    type_canape=type_canape,
+                    tx=tx, ty=ty, tz=tz,
+                    profondeur=profondeur,
+                    acc_left=acc_left,
+                    acc_right=acc_right,
+                    acc_bas=acc_bas,
+                    dossier_left=dossier_left,
+                    dossier_bas=dossier_bas,
+                    dossier_right=dossier_right,
+                    meridienne_side=meridienne_side,
+                    meridienne_len=meridienne_len,
+                    coussins=type_coussins
                 )
                 
                 st.pyplot(fig)
@@ -286,6 +301,7 @@ with col2:
                 
             except Exception as e:
                 st.error(f"❌ Erreur lors de la génération : {str(e)}")
+                st.exception(e)  # Affiche la trace complète pour le debug
     
     # Bouton PDF
     st.markdown("---")
@@ -298,6 +314,19 @@ with col2:
                     config = {
                         'type_canape': type_canape,
                         'dimensions': {'tx': tx, 'ty': ty, 'tz': tz, 'profondeur': profondeur},
+                        'options': {
+                            'acc_left': acc_left,
+                            'acc_right': acc_right,
+                            'acc_bas': acc_bas,
+                            'dossier_left': dossier_left,
+                            'dossier_bas': dossier_bas,
+                            'dossier_right': dossier_right,
+                            'meridienne_side': meridienne_side,
+                            'meridienne_len': meridienne_len,
+                            'type_coussins': type_coussins,
+                            'type_mousse': type_mousse,
+                            'epaisseur': epaisseur
+                        },
                         'client': {'nom': nom_client, 'email': email_client}
                     }
                     
@@ -325,11 +354,13 @@ with col2:
                     
                 except Exception as e:
                     st.error(f"❌ Erreur : {str(e)}")
+                    st.exception(e)
 
 # FOOTER
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: gray;'>
-    <p>🛋️ Générateur de Devis Canapés Sur Mesure v1.0</p>
+    <p>🛋️ Générateur de Devis Canapés Sur Mesure v2.0</p>
+    <p>Utilise canapematplot.py pour la génération de schémas</p>
 </div>
 """, unsafe_allow_html=True)
